@@ -21,7 +21,7 @@ class Visualizer(object):
 			self.width = self.size*len(self.data[0])
 			self.height = self.size*len(self.data)
 
-		def update_data(self, data):
+		def update(self, data):
 			self.data = data
 			# self.vis_callback.update()
 
@@ -43,6 +43,7 @@ class Visualizer(object):
 	def update(self):
 		# Update canvas with changes
 		self.canvas.t_REFRESH()
+		print(f"layers: {len(self.layers)}")
 		for l in self.layers:
 			anchor = l.anchor
 			l_data = l.data
