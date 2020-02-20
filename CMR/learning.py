@@ -40,9 +40,9 @@ class CMR_Model(object):
 		return f_idx
 
 	#TODO Needs to be implemented using time-limited/count limited accumulator design
-	def recall(self):
+	def recall(self, timeout=90000):
 		c_i = self.network.get_current_context()
-		self.network.start_accumulator_for_timeout(90000)
+		self.network.start_accumulator_for_timeout(timeout)
 		recall_idx = -1
 		recall_series = []
 		inputs_max_idx = len(self.params.vocab)

@@ -29,6 +29,9 @@ class Network(object):
 	def update_context(self, stimulus, recall=False):
 		return stimulus
 
+	def recall(self, context):
+		return context
+
 class CMR_Network(Network):
 	def __init__(self, params, semantic_kb, visualizer=None):
 		super().__init__(params, visualizer=visualizer)
