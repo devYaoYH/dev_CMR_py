@@ -8,8 +8,9 @@ class CMR_Model(object):
 		self.params = params
 		self.semantic_kb = semantic_kb
 		self.feature_in = None
-		if (visualizer is not None):
-			self.feature_in = visualizer.add_layer((self.params.vocab_size, 1))
+		self.visualizer = visualizer
+		if (self.visualizer is not None):
+			self.feature_in = self.visualizer.add_layer((self.params.vocab_size, 1))
 		self.network = CMR_Network(params, semantic_kb, visualizer=visualizer)
 
 	##################
@@ -33,16 +34,29 @@ class CMR_Model(object):
 	# online (0, 1) boolean		| Is this a online model? (Recalled feature used
 	#							  to modify context
 	def recall_feature(self, c_i, online=False):
-		f_out = self.network.recall(c_i)
-		if (online):
+		f_idx, f_out = self.network.recall(c_i)
+		if (online and f_out is not None):
 			self.present_feature(f_out, recall=True)
-		return f_out
+		return f_idx
 
 	#TODO Needs to be implemented using time-limited/count limited accumulator design
 	def recall(self):
 		c_i = self.network.get_current_context()
-		f_out = self.recall_feature(c_i, online=True)
-		return f_out
+		self.network.start_accumulator_for_timeout(90000)
+		recall_idx = -1
+		recall_series = []
+		inputs_max_idx = len(self.params.vocab)
+		inputs_left = inputs_max_idx
+		while (recall_idx is not None and inputs_left > 0):
+			print(inputs_left)
+			recall_idx = self.recall_feature(c_i, online=True)
+			if (recall_idx is None):
+				return recall_series
+			if (recall_idx < inputs_max_idx):
+				inputs_left -= 1
+			recall_series.append(recall_idx)
+			self.visualizer.update()
+		return recall_series
 
 	#############
 	# MODEL I/O #

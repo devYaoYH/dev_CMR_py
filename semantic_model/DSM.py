@@ -22,3 +22,9 @@ class Word2Vec(Semantic_KB):
 		if (w2 not in allowable):
 			raise ValueError(f"Word: {w2} not in loaded vocab")
 		return 1-cosine(self.model[w1], self.model[w2])
+
+#TODO Implement (Loading LSA cosines into dict from file)
+# class LSA(Semantic_KB)
+
+#TODO Implement (Some network interface?)
+# class Network(Semantic_KB)

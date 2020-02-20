@@ -43,7 +43,6 @@ class Visualizer(object):
 	def update(self):
 		# Update canvas with changes
 		self.canvas.t_REFRESH()
-		print(f"layers: {len(self.layers)}")
 		for l in self.layers:
 			anchor = l.anchor
 			l_data = l.data
