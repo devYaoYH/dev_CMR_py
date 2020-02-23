@@ -13,7 +13,10 @@ class Semantic_KB(object):
 class Word2Vec(Semantic_KB):
 	def __init__(self):
 		# Load up restricted wordset from Word2Vec
-		self.model = KeyedVectors.load('C:/_YaoYiheng/Projects/dev_CMR_py/data/restricted_word2vec.bin')
+		self.model = KeyedVectors.load('data/restricted_word2vec.bin')
+
+	def get_vocab(self):
+		return self.model.vocab.keys()
 
 	def get_distance(self, w1, w2):
 		allowable = self.model.vocab.keys()

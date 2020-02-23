@@ -5,6 +5,8 @@ from .networks import CMR_Network
 
 class CMR_Model(object):
 	def __init__(self, params, semantic_kb, visualizer=None):
+		self.is_learning = False
+		self.presented_features = []
 		self.params = params
 		self.semantic_kb = semantic_kb
 		self.feature_in = None
@@ -13,6 +15,12 @@ class CMR_Model(object):
 			self.feature_in = self.visualizer.add_layer((self.params.vocab_size, 1))
 		self.network = CMR_Network(params, semantic_kb, visualizer=visualizer)
 
+	###############################
+	# RESETS NETWORK FOR LEARNING #
+	###############################
+	def reset_network(self):
+		self.network.reset()
+
 	##################
 	# LEARNING PHASE #
 	##################
@@ -20,10 +28,24 @@ class CMR_Model(object):
 	# M_fc (m x n) matrix		| Present within model network (CMR)
 	# f_i (n x 1) column vector	| Introduced as stimulus
 	# recall (0, 1)	boolean		| Whether this is during recall
+	#							  default behavior is to learn
+	#							  so assumes not during recall
 	def present_feature(self, f_i, recall=False):
 		if (self.feature_in is not None):
 			self.feature_in.update(f_i)
-		return self.network.update_context(f_i, recall=recall)
+		if (self.is_learning):
+			self.presented_features.append(f_i)
+		return self.network.update_context(f_i, recall=recall, serial_position=len(self.presented_features))
+
+	def begin_learning(self):
+		# Within learning phase, primacy (and other) effects occur
+		self.is_learning = True
+		self.presented_features = []
+
+	def end_learning(self):
+		# Toggle off learning effects
+		self.is_learning = False
+		# Report learning state?
 
 	##################
 	# ACCUM RECALLER #
@@ -35,27 +57,27 @@ class CMR_Model(object):
 	#							  to modify context
 	def recall_feature(self, c_i, online=False):
 		f_idx, f_out = self.network.recall(c_i)
-		if (online and f_out is not None):
-			self.present_feature(f_out, recall=True)
+		if (f_out is not None):
+			self.present_feature(f_out, recall=not online)
 		return f_idx
 
 	#TODO Needs to be implemented using time-limited/count limited accumulator design
 	def recall(self, timeout=90000):
-		c_i = self.network.get_current_context()
+		self.present_feature(self.presented_features[-1], recall=True)
 		self.network.start_accumulator_for_timeout(timeout)
 		recall_idx = -1
 		recall_series = []
 		inputs_max_idx = len(self.params.vocab)
 		inputs_left = inputs_max_idx
 		while (recall_idx is not None and inputs_left > 0):
-			print(inputs_left)
-			recall_idx = self.recall_feature(c_i, online=True)
+			recall_idx = self.recall_feature(self.network.get_current_context())
 			if (recall_idx is None):
 				return recall_series
 			if (recall_idx < inputs_max_idx):
 				inputs_left -= 1
 			recall_series.append(recall_idx)
-			self.visualizer.update()
+			if (self.visualizer is not None):
+				self.visualizer.update()
 		return recall_series
 
 	#############

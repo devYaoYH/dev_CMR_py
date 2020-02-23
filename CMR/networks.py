@@ -22,6 +22,11 @@ class Network(object):
 			if (self.vis is not None):
 				self.vis.update(self.v)
 
+		def reset(self):
+			self.v = np.zeros(self.shape)
+			if (self.vis is not None):
+				self.vis.update(self.v)
+
 	def __init__(self, params, visualizer=None):
 		self.params = params
 		self.visualizer = visualizer
@@ -37,54 +42,116 @@ class CMR_Network(Network):
 		super().__init__(params, visualizer=visualizer)
 
 		# Accumulator Parameters
-		self.accum_noise_sd = params.subject_noise_sd
-		self.accum_thresh = params.accum_thresh
-		self.accum_tau = params.accum_tau
-		self.accum_ki = params.accum_ki
-		self.accum_lambda = params.accum_lambda
-		self.accum_inhib = np.add(-1*np.identity(params.vocab_size), 1)
+		self.accum_noise_sd = self.params.subject_noise_sd
+		self.accum_thresh = self.params.accum_thresh
+		self.accum_tau = self.params.accum_tau
+		self.accum_ki = self.params.accum_ki
+		self.accum_lambda = self.params.accum_lambda
+		self.accum_inhib = np.add(-1*np.identity(self.params.vocab_size), 1)
 
 		# Accumulator Time Keeping
 		self.accum_timer = 0
 		self.accum_timeout = 0
+
+		# Accumulator recalled features tracking
+		self.accum_recalled = set()
+
+		# Primacy Effect
+		self.primacy_phi_s = self.params.phi_s
+		self.primacy_phi_d = self.params.phi_d
 
 		# Semantic knowledge base (loaded model of word2vec | LSA etc...)
 		self.semantic_kb = semantic_kb
 
 		# M_fc_pre is a square identity matrix encoding pre-existing
 		# associations from features to context
-		self.M_fc_pre = np.identity(params.vocab_size)
+		self.M_fc_pre = np.identity(self.params.vocab_size)
 
 		# M_cf_pre is a square matrix with semantic encodings
-		self.M_cf_pre = self.generate_semantics(params.vocab + params.confound)
+		self.M_cf_pre = self.generate_semantics(self.params.vocab + self.params.confound)
 		
 		# M_fc is a square matrix that encodes each feature
 		# to context elements 1-to-1
-		M_fc_size = (params.vocab_size, params.vocab_size)
+		M_fc_size = (self.params.vocab_size, self.params.vocab_size)
 		self.M_fc = self.init_layer(M_fc_size)
-		self.M_fc.update((1-params.M_fc_gamma)*self.M_fc_pre)
+		self.M_fc.update((1-self.params.M_fc_gamma)*self.M_fc_pre)
 
 		# Current context layer
-		v_c_size = (params.vocab_size, 1)
+		v_c_size = (self.params.vocab_size, 1)
 		self.v_context = self.init_layer(v_c_size)
 		
 		# M_cf is a square matrix that encodes each context
 		# to features
-		M_cf_size = (params.vocab_size, params.vocab_size)
+		M_cf_size = (self.params.vocab_size, self.params.vocab_size)
 		self.M_cf = self.init_layer(M_cf_size)
-		self.M_cf.update(params.M_cf_pre_scaling*self.M_cf_pre)
+		self.M_cf.update(self.params.M_cf_pre_scaling*self.M_cf_pre)
 
 		# Feature recall from context
-		v_recall_size = (params.vocab_size, 1)
+		v_recall_size = (self.params.vocab_size, 1)
 		self.v_recall = self.init_layer(v_recall_size)
 
 		# Accumulator layer
-		v_accum_size = (params.vocab_size, 1)
+		v_accum_size = (self.params.vocab_size, 1)
 		self.v_accumulator = self.init_layer(v_accum_size)
 
 		# Feature output layer
-		v_f_size = (params.vocab_size, 1)
+		v_f_size = (self.params.vocab_size, 1)
 		self.v_feature = self.init_layer(v_f_size)
+
+	def reset(self):
+		# Accumulator Parameters
+		self.accum_noise_sd = self.params.subject_noise_sd
+		self.accum_thresh = self.params.accum_thresh
+		self.accum_tau = self.params.accum_tau
+		self.accum_ki = self.params.accum_ki
+		self.accum_lambda = self.params.accum_lambda
+		self.accum_inhib = np.add(-1*np.identity(self.params.vocab_size), 1)
+
+		# Accumulator Time Keeping
+		self.accum_timer = 0
+		self.accum_timeout = 0
+
+		# Accumulator recalled features tracking
+		self.accum_recalled = set()
+
+		# Primacy Effect
+		self.primacy_phi_s = self.params.phi_s
+		self.primacy_phi_d = self.params.phi_d
+
+		# M_fc_pre is a square identity matrix encoding pre-existing
+		# associations from features to context
+		self.M_fc_pre = np.identity(self.params.vocab_size)
+
+		# M_cf_pre is a square matrix with semantic encodings
+		self.M_cf_pre = self.generate_semantics(self.params.vocab + self.params.confound)
+		
+		# M_fc is a square matrix that encodes each feature
+		# to context elements 1-to-1
+		M_fc_size = (self.params.vocab_size, self.params.vocab_size)
+		self.M_fc.reset()
+		self.M_fc.update((1-self.params.M_fc_gamma)*self.M_fc_pre)
+
+		# Current context layer
+		v_c_size = (self.params.vocab_size, 1)
+		self.v_context.reset()
+		
+		# M_cf is a square matrix that encodes each context
+		# to features
+		M_cf_size = (self.params.vocab_size, self.params.vocab_size)
+		self.M_cf.reset()
+		self.M_cf.update(self.params.M_cf_pre_scaling*self.M_cf_pre)
+
+		# Feature recall from context
+		v_recall_size = (self.params.vocab_size, 1)
+		self.v_recall.reset()
+
+		# Accumulator layer
+		v_accum_size = (self.params.vocab_size, 1)
+		self.v_accumulator.reset()
+
+		# Feature output layer
+		v_f_size = (self.params.vocab_size, 1)
+		self.v_feature.reset()
 
 	def init_layer(self, size):
 		#TODO Anymore inits necessary for creation of network layer?
@@ -101,7 +168,10 @@ class CMR_Network(Network):
 				sem_mat[i,j] = self.semantic_kb.get_distance(w1, w2)
 		return sem_mat
 
-	def update_context(self, stimulus, recall=False):
+	def primacy_effect(self, pos):
+		return self.primacy_phi_s*math.exp(-self.primacy_phi_d*(pos-1)) + 1
+
+	def update_context(self, stimulus, recall=False, serial_position=None):
 		#TODO Pad stimulus if incorrectly shaped?
 		c_in = np.matmul(self.M_fc.v, stimulus)
 		c_cur = self.v_context.v
@@ -117,7 +187,11 @@ class CMR_Network(Network):
 			new_M_fc = self.M_fc.v + self.params.M_fc_gamma*delta_M_fc
 			self.M_fc.update(new_M_fc)
 			# Learn and update M_cf
-			delta_M_cf = np.matmul(stimulus, c_i.transpose())
+			phi = 1
+			# If we are in learning phase, then include primacy function
+			if (serial_position is not None):
+				phi = self.primacy_effect(serial_position)
+			delta_M_cf = phi*np.matmul(stimulus, c_i.transpose())
 			# new_M_cf = (1-self.params.M_cf_gamma)*self.M_cf.v + self.params.M_cf_gamma*delta_M_cf
 			new_M_cf = self.M_cf.v + self.params.M_cf_gamma*delta_M_cf
 			self.M_cf.update(new_M_cf)
@@ -160,7 +234,7 @@ class CMR_Network(Network):
 			accumulator[i] = np.random.uniform(0, f_in[i])
 		winner = self.select_winner(accumulator)
 		while (timer < timeout and winner is None):
-			timer += tau
+			timer += 1 # Or tau?
 			accumulator += tau*self.random_noise(accumulator.shape)
 			winner = self.select_winner(accumulator)
 			self.v_accumulator.update(accumulator)
@@ -168,33 +242,41 @@ class CMR_Network(Network):
 
 	# Competitibe Inhibitory accumulator design
 	def inhibitory_accumulator(self, f_in, accumulator, tau, timer, timeout):
-		print(accumulator.shape)
-		print(-tau*self.accum_lambda*self.accum_inhib)
-		print(1 - tau*self.accum_ki)
-		cur_inhib = 1 - tau*self.accum_ki - tau*self.accum_lambda*self.accum_inhib
-		print(cur_inhib)
+		# print(accumulator.shape)
+		# print(-tau*self.accum_lambda*self.accum_inhib)
+		# print(1 - tau*self.accum_ki)
+		# cur_inhib = 1 - tau*self.accum_ki - tau*self.accum_lambda*self.accum_inhib
+		lx = tau*np.matmul(self.accum_lambda*self.accum_inhib, accumulator)
+		kx = tau*self.accum_ki*accumulator
+		# print(cur_inhib)
 		winner = None
 		while (timer < timeout and winner is None):
-			timer += tau
+			timer += 1 # Or tau?
 			# Inhibition from other signals
-			accumulator = np.matmul(cur_inhib,accumulator)
+			accumulator = accumulator - kx - lx
 			# Accumulate f_in
 			accumulator += tau*f_in
 			# Add noise
 			accumulator += self.random_noise(accumulator.shape)
 			# Clamps val to non-negative
 			for i in range(accumulator.shape[0]):
-				accumulator[i] = max(0, accumulator[i])
+				if (i in self.accum_recalled):
+					accumulator[i] = max(0, min(0.95*self.accum_thresh, accumulator[i]))
+				else:
+					accumulator[i] = max(0, accumulator[i])
+			winner = self.select_winner(accumulator)
 			self.v_accumulator.update(accumulator)
 		return winner, timer
 
 	def start_accumulator_for_timeout(self, timeout):
 		self.accum_timer = 0
 		self.accum_timeout = timeout
+		self.accum_recalled = set()
 
 	def recall(self, context):
 		#TODO Pad features if more required?
 		f_in = np.matmul(self.M_cf.v, context)
+		f_in = f_in / np.linalg.norm(f_in)
 		self.v_recall.update(f_in)
 
 		#TODO IMPT Implement Accumulator design
@@ -210,6 +292,9 @@ class CMR_Network(Network):
 		if (cur_recall is None):
 			self.accum_timer = 999999
 			return None, None
+
+		# Update internally tracked set of recalled features
+		self.accum_recalled.add(cur_recall)
 		
 		f_recall = np.zeros(f_out.shape)
 		f_recall[cur_recall] = 1
