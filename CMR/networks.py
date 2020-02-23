@@ -276,7 +276,7 @@ class CMR_Network(Network):
 	def recall(self, context):
 		#TODO Pad features if more required?
 		f_in = np.matmul(self.M_cf.v, context)
-		f_in = f_in / np.linalg.norm(f_in)
+		# f_in = f_in / np.linalg.norm(f_in)
 		self.v_recall.update(f_in)
 
 		#TODO IMPT Implement Accumulator design

@@ -12,7 +12,7 @@ from visualization.Visualizer import Visualizer
 
 VISUALIZE = False
 NUM_SEQUENCES = 1
-NUM_TRAILS_PER_SEQUENCE = 100
+NUM_TRAILS_PER_SEQUENCE = 1000
 
 RANDOM_SEQUENCE = False
 

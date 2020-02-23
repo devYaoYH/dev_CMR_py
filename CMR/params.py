@@ -6,7 +6,7 @@ class Params(object):
 		self.accum_thresh = 1
 		self.accum_tau = 0.25	# Accumulator time step-size
 		self.accum_ki = 0.1		# Accumulator decay rate
-		self.accum_lambda = 0.09 # Accumulator lateral inhibition scaling
+		self.accum_lambda = 0.03 # Accumulator lateral inhibition scaling
 		# Context Integration learning parameter
 		self.c_beta = 0.75
 		self.c_beta_rec = 0.3
