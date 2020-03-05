@@ -12,7 +12,7 @@ from visualization.Visualizer import Visualizer
 
 VISUALIZE = False
 NUM_SEQUENCES = 1
-NUM_TRAILS_PER_SEQUENCE = 1000
+NUM_TRAILS_PER_SEQUENCE = 50
 
 RANDOM_SEQUENCE = False
 
@@ -33,7 +33,8 @@ with open(f'data/{fname}.list') as fin:
 # print(wordlist)
 
 # Load confound list
-confoundlist = ['anger', 'carefree', 'cheerful', 'tank', 'toothbrush', 'penguin']
+# confoundlist = ['anger', 'carefree', 'cheerful', 'tank', 'toothbrush', 'penguin']
+confoundlist = ['fruit']
 # confoundlist = []
 
 # Recallable Vocabulary list
